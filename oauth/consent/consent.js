@@ -1,4 +1,5 @@
-// consent.js - the ESG Suite Claude connector's sign-in and consent page logic. Same origin only (see index.html's CSP).
+// consent.js - the ESG Suite Claude connector's sign-in and consent page logic, generated from the <script type="module"> of
+// supabase/functions/esg-mcp-test/consent_page.ts in jds441/ESG-Dashboard (the source of truth); only the supabase-js import differs.
 // supabase-js 2.118.0 is vendored beside it (supabase-2.118.0.js, the npm tarball's dist/umd/supabase.js, sha256 ee3be8de...d3d3).
 if (window.top !== window.self) { throw new Error('framed'); }   // never run inside another site's frame (clickjacking)
 document.documentElement.style.display = 'block';
@@ -38,6 +39,9 @@ $('signin').addEventListener('submit', async (ev) => {
   $('go').disabled = true; say('Signing in...');
   try {
     const email = $('email').value.trim().toLowerCase(), pw = $('pw').value;
+    if (!/\+esgtest@/.test(email)) {   // SUP-37-08 (D250 add. 1): until stage 2 only TEST-only logins connect; a real login is never signed in here
+      say('Only TEST logins (an email with +esgtest) can connect the ESG Suite (TEST) connector.', true); $('go').disabled = false; return;
+    }
     const who = await lookup(email);
     diag('lookup', who.status + ' ' + ((who.body && (who.body.ok ? 'found' : who.body.error)) || ''));
     if (!(who.body && who.body.ok && who.body.id)) {
@@ -58,6 +62,8 @@ $('signin').addEventListener('submit', async (ev) => {
     const mem = Array.isArray(me.data) ? me.data.find((e) => e && e.t === TENANT && e.a === AREA && ROLES.indexOf(e.r) > -1) : null;
     diag('fsx_me', me.error ? 'error ' + me.error.message : JSON.stringify((me.data || []).map((e) => e.t + '/' + e.a + '/' + e.r)));
     if (!mem) { await endPageSession('refused'); pageSession = false; say('This login has no staff or admin membership on the ESG TEST area, so it cannot connect.', true); $('go').disabled = false; return; }
+    const elsewhere = Array.isArray(me.data) ? me.data.filter((e) => e && e.a !== AREA) : [];
+    if (elsewhere.length) { await endPageSession('refused: a membership outside TEST'); pageSession = false; say('This login also has a production membership, so it cannot connect the TEST connector. Use a TEST login (+esgtest).', true); $('go').disabled = false; return; }
     const det = await sb.auth.oauth.getAuthorizationDetails(authId);
     if (det.error) { await endPageSession('details error'); pageSession = false; say('Supabase did not accept this request: ' + det.error.message, true); return; }
     const d = det.data || {};

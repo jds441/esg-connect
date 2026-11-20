@@ -1,11 +1,11 @@
 # esg-connect
 
 The sign-in and consent page for the ESG Suite's Claude connector (Supabase Auth OAuth 2.1, authorization path `/oauth/consent`),
-served by GitHub Pages at https://jds441.github.io/esg-connect/oauth/consent/. This repository is the page's source of truth.
+served by GitHub Pages at https://jds441.github.io/esg-connect/oauth/consent/. The page is generated from `consent_page.ts` in the ESG Dashboard repository.
 
 - `oauth/consent/index.html` - the page. A Content-Security-Policy allows scripts from this origin only and network calls to the
   ESG Supabase project only; the page hides itself and refuses to run inside another site's frame.
-- `oauth/consent/consent.js` - the logic (sign-in as the ESG Dashboard does, TEST membership check, Approve / Deny).
+- `oauth/consent/consent.js` - the logic, generated from `supabase/functions/esg-mcp-test/consent_page.ts` in the ESG Dashboard repository (its source of truth); only the supabase-js loading differs.
 - `oauth/consent/supabase-2.118.0.js` - supabase-js 2.118.0, `dist/umd/supabase.js` from the npm tarball (registry integrity
   checked), sha256 `ee3be8de192b97cb1d73d1e95d6b82bb1f6b658c0f97c4ef757fc331996ed3d3`, pinned in index.html by SRI.
 
