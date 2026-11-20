@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src https://fnkhosoifmhutlaxpjfu.supabase.co; img-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
-<title>ESG Suite (TEST) - connect Claude</title>
+<title>ESG Suite - connect Claude</title>
 <style>
   html { display:none; }
   :root { color-scheme: light dark; --bg:#f6f7f9; --card:#fff; --ink:#1b1f24; --muted:#5b6470; --line:#d7dce2; --accent:#0b6b4f; --bad:#a3261b; }
@@ -28,7 +28,7 @@
 <main>
   <div class="card">
     <h1>Connect Claude to the ESG Suite</h1>
-    <p class="tag">TEST area. Test logins only.</p>
+    <p class="tag">Sign in with your ESG Suite login. TEST logins carry +esgtest.</p>
     <form id="signin" autocomplete="on">
       <label for="email">Work email</label>
       <input id="email" type="email" autocomplete="username" required>
@@ -37,12 +37,12 @@
       <button id="go" type="submit">Sign in</button>
     </form>
     <section id="consent" hidden>
-      <p><b id="who"></b>, Claude is asking to connect to the ESG Suite (TEST).</p>
+      <p><b id="who"></b>, Claude is asking to connect to the <span id="clabel"></span>.</p>
       <dl>
         <dt>Application</dt><dd id="cname"></dd>
         <dt>Returns to</dt><dd id="cred"></dd>
         <dt>Scopes</dt><dd id="cscope"></dd>
-        <dt>It can</dt><dd>Read who you are (staff id, name, company, area). Nothing else, and no changes.</dd>
+        <dt>It can</dt><dd>Read what your Suite login can read: jobs, clients, cost estimates, sampling plans and who is booked on the Staff Schedule. It makes no changes.</dd>
       </dl>
       <button id="approve" type="button">Approve</button><button id="deny" class="secondary" type="button">Deny</button>
     </section>
@@ -51,6 +51,6 @@
   </div>
 </main>
 <script src="supabase-2.118.0.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK"></script>
-<script src="consent.js?v=2aa7cfa4b12d" integrity="sha384-LJjxsQXNXbsiHsHRR44sWWZaHyGtIFSaxRgO7t8o3FhArh3k1YvYUFaAc9kzBsya"></script>
+<script src="consent.js?v=325bcce5a446" integrity="sha384-JaNxtpYWtnRqBiotCNEM5drCh97kaTVOmhBuiCFpcelUZcJasxcK7fFOT6TKLHHf"></script>
 </body>
 </html>
