@@ -38,7 +38,7 @@ $('signin').addEventListener('submit', async (ev) => {
   $('go').disabled = true; say('Signing in...');
   try {
     const email = $('email').value.trim().toLowerCase(), pw = $('pw').value;
-    if (!/\+esgtest@/.test(email)) {   // SUP-37-08 (D250 add. 1): until stage 2 only TEST-only logins connect; a real login is never signed in here
+    if (!/\+esgtest[^@]*@/.test(email)) {   // SUP-37-08 (D250 add. 1): only TEST-only logins connect (+esgtest, +esgtest-user ...: the D115 test-login rule); a real login is never signed in here
       say('Only TEST logins (an email with +esgtest) can connect the ESG Suite (TEST) connector.', true); $('go').disabled = false; return;
     }
     const who = await lookup(email);
