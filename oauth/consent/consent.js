@@ -8,6 +8,7 @@ const TENANT = 'esg', ROLES = ['staff', 'admin'];
 // the connector clients this page approves, by OAuth client id (= connector_clients.client_id); any other client is refused
 const CLIENTS = {
   '056170ea-7767-4fe0-8915-47bff502ca64': { area: 'test', label: 'ESG Suite (TEST)' },
+  '722a2083-0267-45e3-8482-bc6dffee4bd6': { area: 'prod', label: 'ESG Suite' },
 };
 const AREA_WORDS = { test: 'TEST area', prod: 'production area' };
 const ITERS = [600000, 10000];   // D131: a login is under one of the two counts; the Dashboard tries both (_siGrantEither)
