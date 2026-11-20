@@ -4,7 +4,12 @@ if (window.top !== window.self) { throw new Error('framed'); }   // never run in
 document.documentElement.style.display = 'block';
 const SB_URL = 'https://fnkhosoifmhutlaxpjfu.supabase.co';
 const SB_KEY = 'sb_publishable_Hb8sCBzO10O5p15F02-Gsg_xtwFOE-X';
-const TENANT = 'esg', AREA = 'test', ROLES = ['staff', 'admin'];
+const TENANT = 'esg', ROLES = ['staff', 'admin'];
+// the connector clients this page approves, by OAuth client id (= connector_clients.client_id); any other client is refused
+const CLIENTS = {
+  '056170ea-7767-4fe0-8915-47bff502ca64': { area: 'test', label: 'ESG Suite (TEST)' },
+};
+const AREA_WORDS = { test: 'TEST area', prod: 'production area' };
 const ITERS = [600000, 10000];   // D131: a login is under one of the two counts; the Dashboard tries both (_siGrantEither)
 const $ = (id) => document.getElementById(id);
 const authId = new URLSearchParams(location.search).get('authorization_id');
@@ -19,8 +24,8 @@ async function secret(password, staffId, iter) {
   const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(staffId + '|auth'), iterations: iter, hash: 'SHA-256' }, km, 256);
   return b64url(bits);
 }
-async function lookup(email) {
-  const r = await fetch(SB_URL + '/functions/v1/esg-signin-lookup', { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, tenant: TENANT, area: AREA }) });
+async function lookup(email, area) {
+  const r = await fetch(SB_URL + '/functions/v1/esg-signin-lookup', { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, tenant: TENANT, area: area }) });
   let body = null; try { body = await r.json(); } catch (_) { body = null; }
   return { status: r.status, body: body };
 }
@@ -30,7 +35,7 @@ async function endPageSession(why) {
 }
 let pageSession = false;
 if (!authId) {
-  say('This page opens from Claude when you connect the ESG Suite (TEST) connector. Start from Claude.', true);
+  say('This page opens from Claude when you connect the ESG Suite connector. Start from Claude.', true);
   $('go').disabled = true;
 }
 $('signin').addEventListener('submit', async (ev) => {
@@ -38,13 +43,12 @@ $('signin').addEventListener('submit', async (ev) => {
   $('go').disabled = true; say('Signing in...');
   try {
     const email = $('email').value.trim().toLowerCase(), pw = $('pw').value;
-    if (!/\+esgtest[^@]*@/.test(email)) {   // SUP-37-08 (D250 add. 1): only TEST-only logins connect (+esgtest, +esgtest-user ...: the D115 test-login rule); a real login is never signed in here
-      say('Only TEST logins (an email with +esgtest) can connect the ESG Suite (TEST) connector.', true); $('go').disabled = false; return;
-    }
-    const who = await lookup(email);
-    diag('lookup', who.status + ' ' + ((who.body && (who.body.ok ? 'found' : who.body.error)) || ''));
+    const area = /\+esgtest[^@]*@/.test(email) ? 'test' : 'prod';   // the D115 test-login rule (+esgtest, +esgtest-user ...)
+    const words = AREA_WORDS[area];
+    const who = await lookup(email, area);
+    diag('lookup', area + ' ' + who.status + ' ' + ((who.body && (who.body.ok ? 'found' : who.body.error)) || ''));
     if (!(who.body && who.body.ok && who.body.id)) {
-      say(who.status === 404 ? 'That email has no login on the ESG TEST area. Only test logins can connect this connector.' : 'The sign-in lookup failed (HTTP ' + who.status + ').', true);
+      say(who.status === 404 ? 'That email has no login on the ESG ' + words + '.' : 'The sign-in lookup failed (HTTP ' + who.status + ').', true);
       $('go').disabled = false; return;
     }
     let session = null, used = null;
@@ -57,19 +61,31 @@ $('signin').addEventListener('submit', async (ev) => {
     if (!session) { say('Incorrect password.', true); $('go').disabled = false; return; }
     pageSession = true;
     diag('password grant', 'ok, ' + used + ' rounds; page session ' + String(claims(session.access_token).session_id || '').slice(0, 8));
-    const me = await sb.rpc('fsx_me');
-    const mem = Array.isArray(me.data) ? me.data.find((e) => e && e.t === TENANT && e.a === AREA && ROLES.indexOf(e.r) > -1) : null;
-    diag('fsx_me', me.error ? 'error ' + me.error.message : JSON.stringify((me.data || []).map((e) => e.t + '/' + e.a + '/' + e.r)));
-    if (!mem) { await endPageSession('refused'); pageSession = false; say('This login has no staff or admin membership on the ESG TEST area, so it cannot connect.', true); $('go').disabled = false; return; }
-    const elsewhere = Array.isArray(me.data) ? me.data.filter((e) => e && e.a !== AREA) : [];
-    if (elsewhere.length) { await endPageSession('refused: a membership outside TEST'); pageSession = false; say('This login also has a production membership, so it cannot connect the TEST connector. Use a TEST login (+esgtest).', true); $('go').disabled = false; return; }
+    const refuse = async (why, text) => { await endPageSession(why); pageSession = false; say(text, true); $('go').disabled = false; };
     const det = await sb.auth.oauth.getAuthorizationDetails(authId);
     if (det.error) { await endPageSession('details error'); pageSession = false; say('Supabase did not accept this request: ' + det.error.message, true); return; }
     const d = det.data || {};
     diag('authorization details', JSON.stringify({ keys: Object.keys(d), scope: d.scope || null }));
     if (!d.authorization_id && d.redirect_url) { await endPageSession('already approved'); location.assign(d.redirect_url); return; }
+    const cid = String((d.client && (d.client.id || d.client.client_id)) || '');
+    const known = Object.prototype.hasOwnProperty.call(CLIENTS, cid) ? CLIENTS[cid] : null;
+    diag('client', (cid.slice(0, 8) || '(none)') + ' ' + (known ? known.area : 'unknown'));
+    if (!known) { await refuse('refused: unknown client', 'This page only connects the ESG Suite connectors, and this request is from another application.'); return; }
+    if (known.area !== area) {
+      await refuse('refused: login and connector areas differ', known.area === 'test'
+        ? 'The ESG Suite (TEST) connector takes TEST logins only (an email with +esgtest). Sign in with your TEST login.'
+        : 'The ESG Suite connector takes your real work login. TEST logins (+esgtest) connect the ESG Suite (TEST) connector.');
+      return;
+    }
+    const me = await sb.rpc('fsx_me');
+    const mem = Array.isArray(me.data) ? me.data.find((e) => e && e.t === TENANT && e.a === area && ROLES.indexOf(e.r) > -1) : null;
+    diag('fsx_me', me.error ? 'error ' + me.error.message : JSON.stringify((me.data || []).map((e) => e.t + '/' + e.a + '/' + e.r)));
+    if (!mem) { await refuse('refused', 'This login has no staff or admin membership on the ESG ' + words + ', so it cannot connect.'); return; }
+    const elsewhere = area === 'test' && Array.isArray(me.data) ? me.data.filter((e) => e && e.a !== 'test') : [];   // SUP-37-08: TEST serves TEST-only logins
+    if (elsewhere.length) { await refuse('refused: a membership outside TEST', 'This login also has a production membership, so it cannot connect the TEST connector. Use a TEST login (+esgtest).'); return; }
     const c = d.client || {};
     $('who').textContent = who.body.name || who.body.id;
+    $('clabel').textContent = known.label;
     $('cname').textContent = c.name || c.client_name || c.id || c.client_id || '(unnamed client)';
     $('cred').textContent = d.redirect_uri || '';
     $('cscope').textContent = d.scope || '(none)';
